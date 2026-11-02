@@ -1,0 +1,3 @@
+auditkit==1.1.3
+curatorkit==0.1.22
+gradio_client==2.7.2

@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+curated/
+results/
+bridge-colab.zip
+space-config.json

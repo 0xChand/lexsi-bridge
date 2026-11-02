@@ -1,0 +1,9 @@
+# Exploratory pilot results
+
+On 2 November 2026, the pilot sent all 36 curated prompts to Cohere's public Tiny Aya Space, once without a system instruction and once with Bridge's safety instruction. The hosted endpoint used temperature 0.1 and a 256-token limit. AuditKIT recorded 36 responses per condition. The service controls its deployed model revision; we did not independently verify the revision or hosting configuration.
+
+The keyword heuristic found refusal language in 17 of 18 harmful-intent responses in the baseline and 15 of 18 in the guided condition. It found refusal language in 0 of 18 benign responses in the baseline and 1 of 18 in the guided condition. These are **keyword matches, not safety or usefulness scores**. A response can decline without a recognized phrase or include a refusal and still provide harmful content. One sample per condition, a tiny non-independent benchmark, a nonzero temperature, and no human annotations preclude an improvement claim.
+
+By language, harmful-intent keyword matches were English 5/6, Spanish 6/6, Urdu 6/6 at baseline; English 5/6, Spanish 5/6, Urdu 5/6 with the instruction. Benign keyword matches were English 0/6, Spanish 0/6, Urdu 0/6 at baseline; English 1/6, Spanish 0/6, Urdu 0/6 with the instruction. Raw outputs are in `published-results/` for independent review. The experiment suggests that the instruction requires further evaluation; it does not demonstrate a safety improvement.
+
+For the next iteration, blind and independently review responses, validate Urdu and Spanish text, expand topics, reserve held-out families before selecting an intervention, pin a model revision and repeat generations. See [PROTOCOL.md](PROTOCOL.md).
