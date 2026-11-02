@@ -4,7 +4,7 @@
 
 - Track: AI Red Teaming, Safety and Alignment, specifically a multilingual safety and over-refusal benchmark.
 - Code and reproduction: https://github.com/0xChand/lexsi-bridge
-- Public response explorer: https://lexsi-bridge-audit.rathichand2.workers.dev/
+- Public response explorer on Hugging Face Spaces: https://huggingface.co/spaces/0xChand/bridge-multilingual-safety
 - Dataset and raw logs: https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot
 - Write-up hosted on Hugging Face: https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot/blob/main/ARTICLE.md
 - Lexsi tools used together: CuratorKIT for cleaning and deduplication, AuditKIT for model evaluation and predictions.

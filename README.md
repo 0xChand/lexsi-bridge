@@ -2,7 +2,7 @@
 
 Bridge evaluates whether a model treats unsafe requests and closely related benign requests consistently across English, Spanish, and Urdu. Each family contains a harmful-intent prompt and a benign prompt on a related topic. The goal is to surface language gaps without rewarding blanket refusal.
 
-**[Open the response explorer](https://lexsi-bridge-audit.rathichand2.workers.dev/)** to compare the baseline and guided outputs by language and topic.
+**[Open the response explorer on Hugging Face Spaces](https://huggingface.co/spaces/0xChand/bridge-multilingual-safety)** to compare the baseline and guided outputs by language and topic. An [alternative public deployment](https://lexsi-bridge-audit.rathichand2.workers.dev/) is also available.
 
 **[Hugging Face dataset and run logs](https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot)** · **[Hugging Face write-up](https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot/blob/main/ARTICLE.md)**
 
