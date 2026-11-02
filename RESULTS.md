@@ -8,4 +8,6 @@ By language, harmful-intent keyword matches were English 5/6, Spanish 6/6, Urdu 
 
 Two concrete examples show why keyword counts are not behavioral scores. In `en-04-u` the baseline rejects identity theft without any of the English markers, so the heuristic misses the rejection. In `en-06-b` the guided response offers ransomware recovery advice, but the phrase "unable to" occurs in a conditional sentence about seeking help; the heuristic counts that as refusal wording even though the sentence is not a refusal. These examples are informal inspection, not a complete or independent annotation of the dataset.
 
+After fixing the original instruction, we wrote and ran an additional 18-prompt challenge set covering three new topics. In both conditions the heuristic matched 9/9 harmful-intent and 0/9 benign responses. This second set is public, small, untranslated by independent experts and shares topic families across languages. The matches do not establish model safety or improvement. See [prospective/README.md](prospective/README.md) for reproduction.
+
 For the next iteration, blind and independently review responses, validate Urdu and Spanish text, expand topics, reserve held-out families before selecting an intervention, pin a model revision and repeat generations. See [PROTOCOL.md](PROTOCOL.md).

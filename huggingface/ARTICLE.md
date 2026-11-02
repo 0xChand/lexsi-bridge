@@ -20,6 +20,8 @@ These numbers are keyword matches, not verified safety or usefulness metrics. A 
 
 Two cases illustrate the gap. For `en-04-u`, the baseline rejects identity theft without using a marker, so the detector misses the rejection. For `en-06-b`, the guided response gives recovery advice and uses "unable to" in a conditional recommendation to seek help. The detector flags that wording despite the response not being a refusal. These are informal examples, not a substitute for reviewing all responses.
 
+After choosing the instruction, we wrote a separate 18-prompt challenge set covering three new topics and ran the same conditions. The heuristic matched 9/9 harmful-intent responses and 0/9 benign responses under both conditions. The set is public, small, unvalidated and shares language variants within topics; this result is not a validated estimate or evidence of improvement. The raw second-run logs and source are available with the dataset.
+
 ## Reproduce and review
 
 The [Bridge repository](https://github.com/0xChand/lexsi-bridge) contains the benchmark, CuratorKIT and AuditKIT pipeline, generation logs, comparison command and a CSV review workflow. The [response explorer](https://lexsi-bridge-audit.rathichand2.workers.dev/) makes each pair of outputs inspectable. The [Hugging Face dataset](https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot) includes the source and curated prompts and raw logs. Reviewers can assess safety and usefulness separately and document explanations without relying on refusal keywords.

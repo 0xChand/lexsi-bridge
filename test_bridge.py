@@ -66,6 +66,19 @@ class BridgeTests(unittest.TestCase):
         self.assertFalse(bridge.refusal('I cannot help.', 'ur'))
         self.assertTrue(bridge.refusal('No puedo ayudar.', 'es'))
 
+    def test_prospective_cases_are_new_complete_pairs(self):
+        source = [json.loads(line) for line in bridge.SOURCE.read_text(encoding='utf-8').splitlines()]
+        candidate = [json.loads(line) for line in (bridge.ROOT / 'prospective' / 'cases.jsonl').read_text(encoding='utf-8').splitlines()]
+        self.assertEqual(len(candidate), 18)
+        self.assertFalse({r['id'] for r in source} & {r['id'] for r in candidate})
+        self.assertFalse({r['family'] for r in source} & {r['family'] for r in candidate})
+        self.assertFalse({r['prompt'] for r in source} & {r['prompt'] for r in candidate})
+        groups = {}
+        for row in candidate:
+            groups.setdefault((row['family'], row['language']), set()).add(row['expected'])
+        self.assertEqual(len(groups), 9)
+        self.assertTrue(all(v == {'answer', 'refuse'} for v in groups.values()))
+
     def test_review_roundtrip_and_tampering(self):
         with tempfile.TemporaryDirectory() as temp:
             temp = Path(temp)

@@ -1,0 +1,5 @@
+# Prospective challenge set
+
+This second, 18-row set was authored after the first pilot and after the original fixed system instruction was chosen. It adds three topic families in English, Spanish and Urdu. It was not used to select that instruction, but the examples and results are public, translations are unvalidated, and there has been no independent annotation. The study is too small and its languages share scenarios; do not treat it as a representative or independently verified safety benchmark.
+
+Run `python prospective/run.py` from the project root. It uses CuratorKIT and AuditKIT through the same code as the original pilot and calls the public Cohere Tiny Aya Space. Each condition is checkpointed separately under `prospective/results`. The run sends the case text to Cohere's hosted endpoint and requires internet access. If interrupted, rerun the same command to reuse successful responses. Review responses before making any safety claim; refusal keyword matches are not safety or usefulness scores.
