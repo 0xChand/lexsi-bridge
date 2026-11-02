@@ -4,6 +4,8 @@ Bridge evaluates whether a model treats unsafe requests and closely related beni
 
 **[Open the response explorer](https://lexsi-bridge-audit.rathichand2.workers.dev/)** to compare the baseline and guided outputs by language and topic.
 
+**[Hugging Face dataset and run logs](https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot)** · **[Hugging Face write-up](https://huggingface.co/datasets/0xChand/bridge-multilingual-safety-pilot/blob/main/ARTICLE.md)**
+
 This is a research prototype for Lexsi Track 2. It uses **CuratorKIT** to clean the benchmark and **AuditKIT** to run the same exploratory prompts against model endpoints. The prompts were not held out from development. An optional safety instruction provides a reproducible inference-time intervention; it is not fine-tuning or a weight repair.
 
 ## Status
@@ -32,7 +34,7 @@ The Cohere-hosted public Space exposes a demo endpoint: install `gradio_client`,
 
 - Complete independent human review of the eligible Cohere model runs; report counts and uncertainty, including language slices and failure examples.
 - Expand the benchmark, validate translations, document annotation agreement and separate development from held-out families.
-- Publish the dataset, logs and any model artifacts to Hugging Face, deploy a public demo or repository, and write the required Hugging Face article. Register and submit through the organizers' process.
+- Confirm with organizers whether the published Hugging Face Markdown write-up satisfies their article requirement; the account's native blog editor returned 403. Register and submit through the organizers' process.
 - Check current hackathon rules and repo/model licenses before submission. The model is gated and requires accepting Cohere's terms; no access is assumed.
 
 The small pilot is intended to test the measurement pipeline, not to prove that a model is safe. Refusal wording can hide harmful content, and helpful answers can contain refusal phrases. Urdu and Spanish heuristic coverage is particularly limited.
