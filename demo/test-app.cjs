@@ -10,7 +10,8 @@ class Node {
   replaceChildren(...nodes) { this.children = nodes; }
   addEventListener(name, callback) { this.events[name] = callback; }
 }
-const ids = Object.fromEntries(['language','intent','cases','detail','count'].map(id => [id,new Node(id)]));
+const ids = Object.fromEntries(['dataset','language','intent','cases','detail','count'].map(id => [id,new Node(id)]));
+ids.dataset.value = 'pilot';
 ids.language.value = ids.intent.value = 'all';
 const context = {
   document: {querySelector: s => ids[s.slice(1)], createElement: tag => new Node(tag)},
@@ -28,5 +29,6 @@ setImmediate(() => {
   ids.cases.children[2].events.click();
   assert.equal(ids.detail.children[0].children[0].textContent,'Urdu');
   assert.equal(ids.detail.children[2].children.length,2);
-  console.log('Viewer data loading, filters and comparison passed');
+  ids.dataset.value='prospective'; ids.dataset.events.change();
+  setImmediate(()=>{assert.equal(ids.count.textContent,3); assert.ok(ids.cases.children[0].textContent.length); console.log('Viewer data loading, filters, study switch and comparison passed')});
 });
