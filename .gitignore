@@ -4,3 +4,4 @@ curated/
 results/
 bridge-colab.zip
 space-config.json
+.wrangler/

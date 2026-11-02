@@ -2,7 +2,9 @@
 
 Bridge evaluates whether a model treats unsafe requests and closely related benign requests consistently across English, Spanish, and Urdu. Each family contains a harmful-intent prompt and a benign prompt on a related topic. The goal is to surface language gaps without rewarding blanket refusal.
 
-This is a research prototype for Lexsi Track 2. It uses **CuratorKIT** to clean the benchmark and **AuditKIT** to run the same held-out prompts against model endpoints. An optional safety instruction provides a reproducible inference-time intervention; it is not fine-tuning or a weight repair.
+**[Open the response explorer](https://lexsi-bridge-audit.rathichand2.workers.dev/)** to compare the baseline and guided outputs by language and topic.
+
+This is a research prototype for Lexsi Track 2. It uses **CuratorKIT** to clean the benchmark and **AuditKIT** to run the same exploratory prompts against model endpoints. The prompts were not held out from development. An optional safety instruction provides a reproducible inference-time intervention; it is not fine-tuning or a weight repair.
 
 ## Status
 
@@ -28,7 +30,7 @@ The Cohere-hosted public Space exposes a demo endpoint: install `gradio_client`,
 
 ## Submission work remaining
 
-- Run an eligible Cohere model, both conditions and human review; report counts and uncertainty, including language slices and failure examples.
+- Complete independent human review of the eligible Cohere model runs; report counts and uncertainty, including language slices and failure examples.
 - Expand the benchmark, validate translations, document annotation agreement and separate development from held-out families.
 - Publish the dataset, logs and any model artifacts to Hugging Face, deploy a public demo or repository, and write the required Hugging Face article. Register and submit through the organizers' process.
 - Check current hackathon rules and repo/model licenses before submission. The model is gated and requires accepting Cohere's terms; no access is assumed.
