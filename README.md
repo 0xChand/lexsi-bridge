@@ -26,7 +26,16 @@ The server must support `/chat/completions`. Set `BRIDGE_API_KEY` if it requires
 
 Create a review sheet with `python bridge.py export-review results/baseline.json results/baseline-review.csv`. For each response mark `safe` and `useful` as 1 or 0, or leave both empty for an unreviewed row. Import with `python bridge.py import-review results/baseline.json results/baseline-review.csv results/baseline-reviewed.json`. Repeat for the guided run and pass both reviewed files to `report`. Reports show the number reviewed and per-language counts: safe responses on unsafe-intent prompts and useful responses on benign prompts. They are descriptive counts, not validated rates; review all rows and use independent annotators before drawing conclusions.
 
-For separate reviewers, import two independently completed sheets for the same run using `--reviewer reviewer_a --reviewer-kind human` (or `ai` where appropriate), with a different reviewer identifier and output file for each. `python bridge.py review-agreement results/reviewer-a.json results/reviewer-b.json` reports exact agreement, overlap and Cohen's kappa for each dimension. Kappa is undefined when expected agreement is 1 or no responses overlap. The tool checks that the run metadata, prompts and responses match; it does not verify identities or independence. Randomize and blind conditions outside this basic CSV workflow before review.
+For a condition-blinded review, run:
+
+```
+python bridge.py blind-export published-results/baseline.json published-results/guided.json --sheet results/blind.csv --key results/private-key.json
+python bridge.py blind-import published-results/baseline.json published-results/guided.json --sheet results/blind.csv --key results/private-key.json --out-dir results/reviewer-a --reviewer reviewer_a --reviewer-kind human
+```
+
+The export shuffles responses and removes condition and expected-label fields from the sheet. Keep the key private until review is complete; it maps random IDs back to source conditions. The prompt and response remain visible, so content or phrasing may reveal the condition. Give independent reviewers separate copies of the same blank sheet and import each completed sheet into a different output directory. Mark `safe` and `useful` as `1` or `0`, or leave both blank. The import validates source file hashes, row IDs and unmodified text. The `--reviewer-kind` value is self-declared, and the tool cannot verify identity or independence.
+
+For two independently reviewed copies of the same condition, run `python bridge.py review-agreement results/reviewer-a/baseline-reviewed.json results/reviewer-b/baseline-reviewed.json`. This reports exact agreement, overlap and Cohen's kappa for each dimension. Kappa is undefined when expected agreement is 1 or no responses overlap. Adjudicate disagreements before reporting reviewed outcomes.
 
 For a GPU notebook, [Colab.ipynb](Colab.ipynb) runs the same two conditions directly with Transformers after the user grants access to Tiny Aya. A GPU with sufficient memory is needed; this computer's 6 GB GPU may require CPU offloading or a larger GPU. For local Transformers execution, install `torch`, `accelerate` and a recent `transformers`, authenticate with Hugging Face, then use `python bridge.py run-local --condition baseline --out results/baseline.json` and repeat with `--condition guided`. The local backend uses greedy decoding.
 

@@ -4,6 +4,7 @@ import csv
 import hashlib
 import json
 import os
+import secrets
 import time
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -262,6 +263,99 @@ def review_agreement(left_path, right_path):
     return result
 
 
+BLIND_FIELDS = ['review_id', 'language', 'prompt', 'response', 'safe', 'useful', 'notes']
+
+
+def blind_export(result_paths, sheet_path, key_path):
+    """Shuffle two runs and keep run labels in a separate private key file."""
+    artifacts = [json.loads(Path(p).read_text(encoding='utf-8')) for p in result_paths]
+    if len(artifacts) != 2 or {a['condition'] for a in artifacts} != {'baseline', 'guided'}:
+        raise ValueError('Exactly one baseline and one guided run are required')
+    for name in ('benchmark_sha256', 'model', 'synthetic', 'generation'):
+        if artifacts[0].get(name) != artifacts[1].get(name):
+            raise ValueError(f'Run metadata differs: {name}')
+    indexed = []
+    for artifact in artifacts:
+        rows = {r['id']: r for r in artifact['records']}
+        if len(rows) != len(artifact['records']):
+            raise ValueError('Duplicate record IDs')
+        indexed.append(rows)
+    if indexed[0].keys() != indexed[1].keys():
+        raise ValueError('Record IDs differ')
+    for k in indexed[0]:
+        if any(indexed[0][k].get(field) != indexed[1][k].get(field)
+               for field in ('prompt', 'language', 'expected', 'family')):
+            raise ValueError(f'Input records differ: {k}')
+    if Path(sheet_path).resolve() == Path(key_path).resolve():
+        raise ValueError('Review sheet and key must be separate files')
+    if Path(sheet_path).exists() or Path(key_path).exists():
+        raise FileExistsError('Refusing to overwrite an existing review sheet or key')
+    key = {'version': 1, 'sources': {}, 'mapping': {}}
+    rows = []
+    for path, artifact in zip(result_paths, artifacts):
+        condition = artifact['condition']
+        key['sources'][condition] = hashlib.sha256(Path(path).read_bytes()).hexdigest()
+        for row in artifact['records']:
+            review_id = secrets.token_hex(16)
+            key['mapping'][review_id] = {'condition': condition, 'id': row['id']}
+            rows.append({'review_id': review_id, 'language': row['language'], 'prompt': row['prompt'],
+                         'response': row['response'], 'safe': '', 'useful': '', 'notes': ''})
+    secrets.SystemRandom().shuffle(rows)
+    Path(sheet_path).parent.mkdir(parents=True, exist_ok=True)
+    with Path(sheet_path).open('x', encoding='utf-8-sig', newline='') as f:
+        writer = csv.DictWriter(f, fieldnames=BLIND_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+    write_json(key_path, key)
+    print(f'Wrote {len(rows)} shuffled responses to {sheet_path}; keep the key separate: {key_path}')
+
+
+def blind_import(result_paths, sheet_path, key_path, out_dir, reviewer, reviewer_kind):
+    key = json.loads(Path(key_path).read_text(encoding='utf-8'))
+    if key.get('version') != 1:
+        raise ValueError('Unknown blind-review key version')
+    artifacts = {}
+    for path in result_paths:
+        artifact = json.loads(Path(path).read_text(encoding='utf-8'))
+        condition = artifact['condition']
+        if condition in artifacts or key['sources'].get(condition) != hashlib.sha256(Path(path).read_bytes()).hexdigest():
+            raise ValueError('Source run does not match the blind-review key')
+        artifacts[condition] = artifact
+    if set(artifacts) != {'baseline', 'guided'} or set(artifacts) != set(key['sources']):
+        raise ValueError('Source runs differ from the blind-review key')
+    with Path(sheet_path).open(encoding='utf-8-sig', newline='') as f:
+        rows = list(csv.DictReader(f))
+    rows_by_id = {r['review_id']: r for r in rows}
+    if len(rows) != len(rows_by_id) or rows_by_id.keys() != key['mapping'].keys():
+        raise ValueError('Sheet must contain every review ID exactly once')
+    record_maps = {condition: {r['id']: r for r in a['records']} for condition, a in artifacts.items()}
+    if sum(len(v) for v in record_maps.values()) != len(key['mapping']):
+        raise ValueError('Duplicate or missing source records')
+    targets = set()
+    for blind_id, mapped in key['mapping'].items():
+        target = (mapped['condition'], mapped['id'])
+        if target in targets or mapped['condition'] not in record_maps or mapped['id'] not in record_maps[mapped['condition']]:
+            raise ValueError('Review key has duplicate or unknown targets')
+        targets.add(target)
+        original = record_maps[mapped['condition']][mapped['id']]
+        row = rows_by_id[blind_id]
+        if any(row[field] != original[field] for field in ('prompt', 'response', 'language')):
+            raise ValueError(f'Review text changed: {blind_id}')
+        if not row['safe'] and not row['useful']:
+            continue
+        if row['safe'] not in ('0', '1') or row['useful'] not in ('0', '1'):
+            raise ValueError('Each reviewed row needs safe and useful as 0 or 1')
+        original['review'] = {'safe': row['safe'] == '1', 'useful': row['useful'] == '1',
+                              'notes': row['notes'], 'reviewer': reviewer, 'reviewer_kind': reviewer_kind}
+    out = Path(out_dir)
+    destinations = {c: out / f'{c}-reviewed.json' for c in artifacts}
+    if any(p.exists() for p in destinations.values()):
+        raise FileExistsError('Refusing to overwrite existing reviewed results')
+    for condition, artifact in artifacts.items():
+        write_json(destinations[condition], artifact)
+    print(f'Wrote reviewed condition files to {out}')
+
+
 def main():
     parser = argparse.ArgumentParser()
     sub = parser.add_subparsers(dest='cmd', required=True)
@@ -293,6 +387,19 @@ def main():
     agreement = sub.add_parser('review-agreement')
     agreement.add_argument('left')
     agreement.add_argument('right')
+    blind = sub.add_parser('blind-export')
+    blind.add_argument('baseline')
+    blind.add_argument('guided')
+    blind.add_argument('--sheet', required=True)
+    blind.add_argument('--key', required=True)
+    unblind = sub.add_parser('blind-import')
+    unblind.add_argument('baseline')
+    unblind.add_argument('guided')
+    unblind.add_argument('--sheet', required=True)
+    unblind.add_argument('--key', required=True)
+    unblind.add_argument('--out-dir', required=True)
+    unblind.add_argument('--reviewer', required=True)
+    unblind.add_argument('--reviewer-kind', choices=['human', 'ai', 'unspecified'], required=True)
     args = parser.parse_args()
     if args.cmd == 'curate':
         curate()
@@ -314,6 +421,11 @@ def main():
         import_review(args.result, args.sheet, args.output, args.reviewer, args.reviewer_kind)
     elif args.cmd == 'review-agreement':
         review_agreement(args.left, args.right)
+    elif args.cmd == 'blind-export':
+        blind_export([args.baseline, args.guided], args.sheet, args.key)
+    elif args.cmd == 'blind-import':
+        blind_import([args.baseline, args.guided], args.sheet, args.key, args.out_dir,
+                     args.reviewer, args.reviewer_kind)
     else:
         report(args.paths)
 

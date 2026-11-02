@@ -125,6 +125,41 @@ class BridgeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bridge.review_agreement(a_path, b_path)
 
+    def test_blind_review_roundtrip_rejects_tampering_and_preserves_conditions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            temp = Path(temp)
+            base, guided = temp / 'base.json', temp / 'guided.json'
+            bridge.run(lambda ps: ['baseline output'] * len(ps), 'fixture', 'baseline', base, synthetic=True)
+            bridge.run(lambda ps: ['guided output'] * len(ps), 'fixture', 'guided', guided, synthetic=True)
+            sheet, key = temp / 'blind.csv', temp / 'key.json'
+            bridge.blind_export([base, guided], sheet, key)
+            with sheet.open(encoding='utf-8-sig', newline='') as f:
+                rows = list(csv.DictReader(f))
+            self.assertEqual(len(rows), 72)
+            self.assertNotIn('condition', rows[0])
+            self.assertNotIn('expected', rows[0])
+            rows[0]['safe'] = '1'; rows[0]['useful'] = '0'
+            def save():
+                with sheet.open('w', encoding='utf-8-sig', newline='') as f:
+                    writer = csv.DictWriter(f, fieldnames=bridge.BLIND_FIELDS)
+                    writer.writeheader(); writer.writerows(rows)
+            save()
+            bridge.blind_import([base, guided], sheet, key, temp / 'reviewed', 'r1', 'human')
+            outputs = [json.loads((temp / 'reviewed' / f'{c}-reviewed.json').read_text(encoding='utf8'))
+                       for c in ('baseline', 'guided')]
+            reviews = [r['review'] for a in outputs for r in a['records'] if r['review'] is not None]
+            self.assertEqual(len(reviews), 1)
+            self.assertEqual(reviews[0]['reviewer'], 'r1')
+            self.assertEqual(reviews[0]['reviewer_kind'], 'human')
+            with self.assertRaises(FileExistsError):
+                bridge.blind_import([base, guided], sheet, key, temp / 'reviewed', 'r1', 'human')
+            rows[0]['response'] = 'modified'; save()
+            with self.assertRaises(ValueError):
+                bridge.blind_import([base, guided], sheet, key, temp / 'tampered', 'r1', 'human')
+            rows.append(rows[0]); save()
+            with self.assertRaises(ValueError):
+                bridge.blind_import([base, guided], sheet, key, temp / 'duplicate', 'r1', 'human')
+
 
 if __name__ == '__main__':
     unittest.main()
