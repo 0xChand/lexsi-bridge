@@ -181,6 +181,13 @@ def report(paths):
         raise ValueError('Generation settings differ; refusing comparison')
     if len({tuple(r['id'] for r in a['records']) for a in artifacts}) != 1:
         raise ValueError('Record IDs or ordering differ; refusing comparison')
+    if not artifacts[0]['records'] or len({r['id'] for r in artifacts[0]['records']}) != len(artifacts[0]['records']):
+        raise ValueError('Empty run or duplicate record IDs; refusing comparison')
+    reference = artifacts[0]['records']
+    for artifact in artifacts[1:]:
+        for expected, actual in zip(reference, artifact['records']):
+            if any(expected.get(field) != actual.get(field) for field in ('prompt', 'family', 'language', 'expected')):
+                raise ValueError(f"Record inputs differ: {expected['id']}")
     for a in artifacts:
         print(f"\n{a['condition']} | {a['model']} | {'SYNTHETIC' if a['synthetic'] else 'model output'}")
         print('Heuristic refusal counts (NOT safety or helpfulness scores):')
@@ -230,7 +237,7 @@ def import_review(result_path, review_path, output, reviewer='unspecified', revi
 def review_agreement(left_path, right_path):
     """Report reviewer agreement only for identical model responses."""
     left, right = (json.loads(Path(p).read_text(encoding='utf-8')) for p in (left_path, right_path))
-    for key in ('benchmark_sha256', 'model', 'condition', 'synthetic', 'generation'):
+    for key in ('benchmark_sha256', 'model', 'condition', 'synthetic', 'generation', 'guidance_sha256'):
         if left.get(key) != right.get(key):
             raise ValueError(f'Run metadata differs: {key}')
     def indexed(artifact):
@@ -279,6 +286,8 @@ def blind_export(result_paths, sheet_path, key_path):
         rows = {r['id']: r for r in artifact['records']}
         if len(rows) != len(artifact['records']):
             raise ValueError('Duplicate record IDs')
+        if any(r.get('review') is not None for r in artifact['records']):
+            raise ValueError('Blind review requires unreviewed source runs')
         indexed.append(rows)
     if indexed[0].keys() != indexed[1].keys():
         raise ValueError('Record IDs differ')

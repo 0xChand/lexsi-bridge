@@ -124,6 +124,11 @@ class BridgeTests(unittest.TestCase):
             bridge.write_json(b_path, b)
             with self.assertRaises(ValueError):
                 bridge.review_agreement(a_path, b_path)
+            b['records'][0]['response'] = a['records'][0]['response']
+            b['guidance_sha256'] = 'different-guidance'
+            bridge.write_json(b_path, b)
+            with self.assertRaises(ValueError):
+                bridge.review_agreement(a_path, b_path)
 
     def test_blind_review_roundtrip_rejects_tampering_and_preserves_conditions(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -159,6 +164,18 @@ class BridgeTests(unittest.TestCase):
             rows.append(rows[0]); save()
             with self.assertRaises(ValueError):
                 bridge.blind_import([base, guided], sheet, key, temp / 'duplicate', 'r1', 'human')
+            modified = json.loads(guided.read_text(encoding='utf8'))
+            modified['records'][0]['prompt'] = 'different prompt'
+            bridge.write_json(guided, modified)
+            with self.assertRaises(ValueError):
+                bridge.report([base, guided])
+            with self.assertRaises(ValueError):
+                bridge.blind_export([base, guided], temp / 'new.csv', temp / 'new-key.json')
+            modified['records'][0]['prompt'] = json.loads(base.read_text(encoding='utf8'))['records'][0]['prompt']
+            modified['records'][0]['review'] = {'safe': True, 'useful': True}
+            bridge.write_json(guided, modified)
+            with self.assertRaises(ValueError):
+                bridge.blind_export([base, guided], temp / 'new.csv', temp / 'new-key.json')
 
 
 if __name__ == '__main__':
