@@ -186,7 +186,7 @@ def report(paths):
         for (language, expected), (n, total) in sorted(summarize(a).items()):
             print(f'  {language} {expected}: {n}/{total}')
         reviewed = [r for r in a['records'] if r.get('review') is not None]
-        print(f'Human reviews: {len(reviewed)}/{len(a["records"])}')
+        print(f'Recorded reviews: {len(reviewed)}/{len(a["records"])} (reviewer identity is not verified)')
         for language in sorted({r['language'] for r in a['records']}):
             for expected, criterion in [('refuse', 'safe'), ('answer', 'useful')]:
                 subset = [r for r in reviewed if r['language'] == language and r['expected'] == expected]
@@ -205,7 +205,7 @@ def export_review(result_path, output):
     print(f'Wrote review sheet: {output}')
 
 
-def import_review(result_path, review_path, output):
+def import_review(result_path, review_path, output, reviewer='unspecified', reviewer_kind='unspecified'):
     artifact = json.loads(Path(result_path).read_text(encoding='utf-8'))
     with Path(review_path).open(encoding='utf-8-sig', newline='') as f:
         rows = list(csv.DictReader(f))
@@ -220,9 +220,46 @@ def import_review(result_path, review_path, output):
             continue
         if row['safe'] not in ('0', '1') or row['useful'] not in ('0', '1'):
             raise ValueError('Each reviewed row needs safe and useful as 0 or 1')
-        record['review'] = {'safe': row['safe'] == '1', 'useful': row['useful'] == '1', 'notes': row['notes']}
+        record['review'] = {'safe': row['safe'] == '1', 'useful': row['useful'] == '1', 'notes': row['notes'],
+                            'reviewer': reviewer, 'reviewer_kind': reviewer_kind}
     write_json(output, artifact)
     print(f'Wrote reviewed result: {output}')
+
+
+def review_agreement(left_path, right_path):
+    """Report reviewer agreement only for identical model responses."""
+    left, right = (json.loads(Path(p).read_text(encoding='utf-8')) for p in (left_path, right_path))
+    for key in ('benchmark_sha256', 'model', 'condition', 'synthetic', 'generation'):
+        if left.get(key) != right.get(key):
+            raise ValueError(f'Run metadata differs: {key}')
+    def indexed(artifact):
+        rows = artifact['records']
+        result = {r['id']: r for r in rows}
+        if len(result) != len(rows):
+            raise ValueError('Duplicate record IDs')
+        return result
+    a, b = indexed(left), indexed(right)
+    if a.keys() != b.keys():
+        raise ValueError('Record IDs differ')
+    for key in a:
+        if any(a[key].get(field) != b[key].get(field) for field in ('prompt', 'response', 'language', 'expected')):
+            raise ValueError(f'Record content differs: {key}')
+    overlap = [(a[k], b[k]) for k in a if a[k].get('review') is not None and b[k].get('review') is not None]
+    result = {'total_records': len(a), 'overlap': len(overlap), 'dimensions': {}}
+    for dimension in ('safe', 'useful'):
+        pairs = [(x['review'][dimension], y['review'][dimension]) for x, y in overlap]
+        if any(type(x) is not bool or type(y) is not bool for x, y in pairs):
+            raise ValueError('Review labels must be booleans')
+        n = len(pairs)
+        matches = sum(x == y for x, y in pairs)
+        observed = matches / n if n else None
+        expected = ((sum(x for x, _ in pairs) / n) * (sum(y for _, y in pairs) / n) +
+                    (sum(not x for x, _ in pairs) / n) * (sum(not y for _, y in pairs) / n)) if n else None
+        kappa = ((observed - expected) / (1 - expected)) if n and expected < 1 else None
+        result['dimensions'][dimension] = {'matches': matches, 'total': n,
+                                          'observed_agreement': observed, 'cohens_kappa': kappa}
+    print(json.dumps(result, indent=2))
+    return result
 
 
 def main():
@@ -251,6 +288,11 @@ def main():
     review.add_argument('result')
     review.add_argument('sheet')
     review.add_argument('output')
+    review.add_argument('--reviewer', default='unspecified', help='Pseudonymous reviewer identifier')
+    review.add_argument('--reviewer-kind', choices=['human', 'ai', 'unspecified'], default='unspecified')
+    agreement = sub.add_parser('review-agreement')
+    agreement.add_argument('left')
+    agreement.add_argument('right')
     args = parser.parse_args()
     if args.cmd == 'curate':
         curate()
@@ -269,7 +311,9 @@ def main():
     elif args.cmd == 'export-review':
         export_review(args.result, args.output)
     elif args.cmd == 'import-review':
-        import_review(args.result, args.sheet, args.output)
+        import_review(args.result, args.sheet, args.output, args.reviewer, args.reviewer_kind)
+    elif args.cmd == 'review-agreement':
+        review_agreement(args.left, args.right)
     else:
         report(args.paths)
 

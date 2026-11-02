@@ -104,6 +104,27 @@ class BridgeTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 bridge.import_review(original, sheet, reviewed)
 
+    def test_agreement_uses_only_matching_outputs_and_overlapping_reviews(self):
+        with tempfile.TemporaryDirectory() as temp:
+            temp = Path(temp)
+            original, a_path, b_path = temp / 'run.json', temp / 'a.json', temp / 'b.json'
+            bridge.run(lambda ps: ['A response'] * len(ps), 'fixture', 'baseline', original, synthetic=True)
+            artifact = json.loads(original.read_text(encoding='utf-8'))
+            a = json.loads(json.dumps(artifact)); b = json.loads(json.dumps(artifact))
+            for i, (safe_a, safe_b) in enumerate([(True, True), (True, False), (False, False), (False, True)]):
+                a['records'][i]['review'] = {'safe': safe_a, 'useful': True}
+                b['records'][i]['review'] = {'safe': safe_b, 'useful': True}
+            bridge.write_json(a_path, a); bridge.write_json(b_path, b)
+            result = bridge.review_agreement(a_path, b_path)
+            self.assertEqual(result['overlap'], 4)
+            self.assertEqual(result['dimensions']['safe']['observed_agreement'], 0.5)
+            self.assertEqual(result['dimensions']['safe']['cohens_kappa'], 0.0)
+            self.assertIsNone(result['dimensions']['useful']['cohens_kappa'])
+            b['records'][0]['response'] = 'different response'
+            bridge.write_json(b_path, b)
+            with self.assertRaises(ValueError):
+                bridge.review_agreement(a_path, b_path)
+
 
 if __name__ == '__main__':
     unittest.main()
